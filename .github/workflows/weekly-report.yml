@@ -1,0 +1,37 @@
+name: weekly-report
+# 毎週金曜16:00 JST に Supabaseの最新データを集計し、Slack #michiru便 へ週次レポートを送信。
+# 送信にはリポジトリSecret「SLACK_WEBHOOK_MICHIRUBIN」（Slack Incoming Webhook URL）が必要。
+on:
+  schedule:
+    - cron: '0 7 * * 5'   # 金曜 07:00 UTC = 16:00 JST
+  workflow_dispatch: {}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 集計してSlackへ送信
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_MICHIRUBIN }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "::error::SLACK_WEBHOOK_MICHIRUBIN が未設定です。Settings→Secrets→Actions に追加してください。"
+            exit 1
+          fi
+          SB_URL="https://padogdidlrzfuysjzcsf.supabase.co/rest/v1/curb65_records"
+          SB_KEY="sb_publishable_LWQ4rBSGPWViDk0pXeY_Mg_ooaMGq1V"
+          curl -sf "$SB_URL?select=patient_label,total_score,risk_class&order=id.asc" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" -o data.json
+          DATE=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          COUNT=$(jq 'length' data.json)
+          HIGH=$(jq '[.[]|select(.risk_class=="high")]|length' data.json)
+          MID=$(jq '[.[]|select(.risk_class=="mid")]|length' data.json)
+          LOW=$(jq '[.[]|select(.risk_class=="low")]|length' data.json)
+          if [ "$COUNT" -gt 0 ]; then
+            MEAN=$(jq '[.[].total_score]|add/length' data.json | xargs printf "%.1f")
+            LIST=$(jq -r '.[] | "• \(.patient_label)：CURB \(.total_score)/5（\(.risk_class)）"' data.json)
+          else
+            MEAN="0.0"; LIST="（記録なし）"
+          fi
+          MSG=$(printf ':bar_chart: *CURB-65記録版 週次レポート*（%s 時点）\n:warning: 架空のダミーデータのみ／実患者データなし\n\n*登録件数：%s件*（高%s ／ 中%s ／ 低%s）\n*平均CURB-65スコア：%s 点*\n\n%s\n\n:globe_with_meridians: https://mi5chi5run-del.github.io/curb65-kiroku/' "$DATE" "$COUNT" "$HIGH" "$MID" "$LOW" "$MEAN" "$LIST")
+          jq -n --arg t "$MSG" '{text:$t}' > payload.json
+          curl -sf -X POST -H 'Content-type: application/json' --data @payload.json "$WEBHOOK" && echo "Slack送信成功"
