@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CURB-65記録版（Supabase版・全端末共有）</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#fff; --ink:#1f2933; --sub:#66707a; --line:#e3e8ee;
+    --accent:#2b6cb0; --low:#6b7280; --mid:#d97706; --high:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink); line-height:1.6;
+    font-family:"Yu Gothic","游ゴシック",YuGothic,"Meiryo",sans-serif; -webkit-font-smoothing:antialiased;}
+  header{background:var(--accent); color:#fff; padding:16px 20px}
+  header h1{margin:0; font-size:20px}
+  header p{margin:4px 0 0; font-size:13px; opacity:.9}
+  .wrap{max-width:820px; margin:0 auto; padding:20px 16px 60px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px}
+  h2{font-size:15px; margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--line)}
+  label{display:block; font-size:13px; color:var(--sub); margin:10px 0 4px}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:7px; font:inherit; color:var(--ink); background:#fff;}
+  textarea{min-height:64px; resize:vertical}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .row>div{flex:1; min-width:180px}
+  .req{color:var(--high)}
+  .items{margin-top:6px}
+  .item{display:flex; align-items:center; gap:12px; border:1.5px solid var(--line); border-radius:8px; padding:9px 12px; margin-top:8px}
+  .item.on{border-color:var(--accent); background:#eff6ff}
+  .item-letter{width:32px; height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#f0f2f5; border-radius:7px; font-weight:700; font-size:13px; color:var(--sub)}
+  .item.on .item-letter{background:var(--accent); color:#fff}
+  .item-body{flex:1; min-width:0}
+  .item-title{font-size:13px; font-weight:600}
+  .item-point{width:28px; text-align:center; font-weight:700; color:var(--sub)}
+  .item.on .item-point{color:var(--accent)}
+  .toggle{display:inline-flex; gap:6px; margin-top:4px}
+  .toggle-btn{padding:4px 13px; border:1.5px solid var(--line); border-radius:999px; background:#fff; cursor:pointer; font:inherit; font-size:13px; color:var(--sub)}
+  .toggle-btn.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .nrow{display:flex; align-items:center; gap:6px; margin-top:4px}
+  .nrow input{width:88px}
+  .unit{font-size:12px; color:var(--sub)}
+  .live{display:flex; align-items:center; gap:14px; border-radius:8px; padding:12px 16px; margin:14px 0; background:#f0f2f5; border-left:5px solid var(--low)}
+  .live.low{border-color:var(--low); background:#f0f2f5}
+  .live.mid{border-color:var(--mid); background:#fffbeb}
+  .live.high{border-color:var(--high); background:#fef2f2}
+  .live .num{font-size:26px; font-weight:800}
+  .live .max{font-size:13px; color:var(--sub); font-weight:600}
+  .live .rname{font-weight:700; font-size:14px}
+  .live .rmort{font-size:12px; color:var(--sub)}
+  .btns{margin-top:12px; display:flex; gap:8px; flex-wrap:wrap}
+  button.act{font:inherit; cursor:pointer; border:none; border-radius:7px; padding:9px 16px}
+  .primary{background:var(--accent); color:#fff}
+  .ghost{background:#eef2f6; color:var(--ink)}
+  .primary:disabled{opacity:.6; cursor:default}
+  .note{font-size:12px; color:var(--sub); margin-top:12px; background:#fbfcfd; border:1px dashed var(--line); border-radius:7px; padding:9px 11px}
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
+  .toolbar select,.toolbar input{width:auto; flex:1; min-width:130px}
+  .count{font-size:13px; color:var(--sub)}
+  .backup{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px}
+  .mini{font:inherit; font-size:12px; cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:6px; padding:6px 12px}
+  .mini:hover{background:#f0f2f5}
+  .rec{border:1px solid var(--line); border-radius:9px; padding:12px 14px; margin-bottom:10px}
+  .rec.editing{border-color:var(--accent); box-shadow:0 0 0 2px rgba(43,108,176,.12)}
+  .rec-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px}
+  .rec-name{font-weight:700; font-size:15px}
+  .badge{display:inline-block; font-size:11px; color:#fff; padding:2px 9px; border-radius:999px; margin-left:8px}
+  .b-low{background:var(--low)} .b-mid{background:var(--mid)} .b-high{background:var(--high)}
+  .rec-score{font-size:13px; color:var(--sub)} .rec-score b{color:var(--ink); font-size:16px}
+  .rec-meta{font-size:12px; color:var(--sub); margin-top:6px}
+  .rec-note{font-size:13px; margin-top:6px; white-space:pre-wrap}
+  .rec-actions{display:flex; gap:6px; flex-shrink:0}
+  .edit{background:#fff; color:var(--accent); border:1px solid var(--accent); padding:5px 10px; font-size:12px; border-radius:6px; cursor:pointer}
+  .danger{background:#fff; color:var(--high); border:1px solid var(--high); padding:5px 10px; font-size:12px; border-radius:6px; cursor:pointer}
+  .empty{text-align:center; color:var(--sub); padding:28px 10px; font-size:14px}
+  .foot{font-size:12px; color:var(--sub)}
+  /* 接続状態バナー */
+  .conn{border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:13px}
+  .conn.ok{background:#ecfdf5; border:1px solid #6ee7b7; color:#065f46}
+  .conn.ng{background:#fef2f2; border:1px solid #fca5a5; color:#991b1b}
+  .conn code{background:rgba(0,0,0,.06); padding:1px 5px; border-radius:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>CURB-65 記録版（Supabase版）</h1>
+  <p>データはクラウド（Supabase）に保存。どのPC・どのブラウザからでも同じ記録が見えます（全端末共有）。</p>
+</header>
+
+<div class="wrap">
+
+  <div id="connBanner" class="conn ng">接続情報を確認中…</div>
+
+  <div class="card">
+    <h2 id="formTitle">新しい評価を記録</h2>
+    <div class="row">
+      <div>
+        <label for="inLabel">患者ラベル（匿名）<span class="req">*</span></label>
+        <input type="text" id="inLabel" placeholder="例：ダミーID A-01">
+      </div>
+      <div>
+        <label for="inDate">評価日</label>
+        <input type="date" id="inDate">
+      </div>
+    </div>
+
+    <div class="items">
+      <div class="item" id="itemC">
+        <div class="item-letter">C</div>
+        <div class="item-body">
+          <div class="item-title">意識障害（Confusion）</div>
+          <div class="toggle">
+            <button type="button" class="toggle-btn" data-value="0">なし</button>
+            <button type="button" class="toggle-btn" data-value="1">あり</button>
+          </div>
+        </div>
+        <div class="item-point" id="pC">0</div>
+      </div>
+      <div class="item" id="itemU">
+        <div class="item-letter">U</div>
+        <div class="item-body">
+          <div class="item-title">BUN（&gt; 20 mg/dL で1点）</div>
+          <div class="nrow"><input type="number" id="inBun" min="0" max="300" step="1" placeholder="例: 25"><span class="unit">mg/dL</span></div>
+        </div>
+        <div class="item-point" id="pU">0</div>
+      </div>
+      <div class="item" id="itemR">
+        <div class="item-letter">R</div>
+        <div class="item-body">
+          <div class="item-title">呼吸数（≥ 30 回/分 で1点）</div>
+          <div class="nrow"><input type="number" id="inRr" min="0" max="80" step="1" placeholder="例: 32"><span class="unit">回/分</span></div>
+        </div>
+        <div class="item-point" id="pR">0</div>
+      </div>
+      <div class="item" id="itemB">
+        <div class="item-letter">B</div>
+        <div class="item-body">
+          <div class="item-title">血圧（収縮期&lt;90 または 拡張期≤60 で1点）</div>
+          <div class="nrow"><input type="number" id="inSbp" min="0" max="300" step="1" placeholder="収縮期"><span class="unit">/</span><input type="number" id="inDbp" min="0" max="200" step="1" placeholder="拡張期"><span class="unit">mmHg</span></div>
+        </div>
+        <div class="item-point" id="pB">0</div>
+      </div>
+      <div class="item" id="itemAge">
+        <div class="item-letter">65</div>
+        <div class="item-body">
+          <div class="item-title">年齢（≥ 65 歳 で1点）</div>
+          <div class="nrow"><input type="number" id="inAge" min="0" max="120" step="1" placeholder="例: 72"><span class="unit">歳</span></div>
+        </div>
+        <div class="item-point" id="pA">0</div>
+      </div>
+    </div>
+
+    <div class="live" id="live">
+      <div><span class="num" id="scoreNum">0</span><span class="max">/5</span></div>
+      <div>
+        <div class="rname" id="riskName">—</div>
+        <div class="rmort">30日死亡率の目安：<span id="riskMort">—</span></div>
+      </div>
+    </div>
+
+    <label for="inNote">対応メモ</label>
+    <textarea id="inNote" placeholder="例：外来治療の方針／入院、抗菌薬〇〇開始"></textarea>
+
+    <div class="btns">
+      <button class="act primary" id="btnSave">記録する</button>
+      <button class="act ghost" id="btnCancel" style="display:none">編集をやめる</button>
+    </div>
+    <p class="note">⚠ この版はクラウド（Supabase）に保存します。上のポリシーは全開放（誰でも読み書き可）なので、<b>実在患者データは載せず、ダミーデータ専用</b>にしてください。実データは大学承認のうえ REDCap / Power Apps で。</p>
+  </div>
+
+  <div class="card">
+    <h2>記録した一覧（クラウド）</h2>
+    <div class="toolbar">
+      <select id="filterRisk">
+        <option value="">すべてのリスク</option>
+        <option value="low">低リスク</option>
+        <option value="mid">中等度リスク</option>
+        <option value="high">高リスク</option>
+      </select>
+      <input type="text" id="searchBox" placeholder="患者ラベルで検索">
+      <span class="count" id="count"></span>
+    </div>
+    <div class="backup">
+      <button class="mini" id="btnReload">🔄 サーバーから再読み込み</button>
+      <button class="mini" id="btnExportJson">💾 JSONで書き出し</button>
+      <button class="mini" id="btnExportCsv">📊 CSVで書き出し（Excel/R用）</button>
+    </div>
+    <div id="list"></div>
+  </div>
+
+  <p class="foot">臨床判断の補助ツールです。最終判断は医師が総合的に行ってください（成人CAP対象）。出典：Lim WS, et al. Thorax. 2003;58:377-382.</p>
+</div>
+
+<script>
+  'use strict';
+
+  // =====================================================================
+  //  接続情報：自分の Supabase プロジェクトの2つの値に置き換える
+  //  （Project Settings → API の Project URL と anon public key）
+  //  ※置き換えるまではオフラインの案内だけ表示されます。
+  // =====================================================================
+  const SUPABASE_URL = 'https://padogdidlrzfuysjzcsf.supabase.co';                 // プロジェクト: curb65-kiroku（Tokyo）
+  const SUPABASE_KEY = 'sb_publishable_LWQ4rBSGPWViDk0pXeY_Mg_ooaMGq1V';           // publishable key（公開可・RLS前提）
+
+  const TABLE = SUPABASE_URL + '/rest/v1/curb65_records';
+  const H = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json'
+  };
+  const CONFIGURED = !SUPABASE_URL.includes('xxxx') && SUPABASE_KEY.indexOf('ここに') === -1;
+
+  const $ = id => document.getElementById(id);
+  let records = [];
+  let confusion = 0;
+  let editingId = null;
+
+  // ===== Supabase REST（localStorageの代わり）=====
+  async function apiGet(){
+    const res = await fetch(TABLE + '?select=*&order=id.desc', { headers: H });
+    if(!res.ok) throw new Error('取得失敗 ' + res.status + '：' + (await res.text()));
+    return res.json();
+  }
+  async function apiInsert(data){
+    const res = await fetch(TABLE, { method:'POST', headers: H, body: JSON.stringify(data) });
+    if(!res.ok) throw new Error('登録失敗 ' + res.status + '：' + (await res.text()));
+  }
+  async function apiUpdate(id, data){
+    const res = await fetch(TABLE + '?id=eq.' + id, { method:'PATCH', headers: H, body: JSON.stringify(data) });
+    if(!res.ok) throw new Error('更新失敗 ' + res.status + '：' + (await res.text()));
+  }
+  async function apiDelete(id){
+    const res = await fetch(TABLE + '?id=eq.' + id, { method:'DELETE', headers: H });
+    if(!res.ok) throw new Error('削除失敗 ' + res.status + '：' + (await res.text()));
+  }
+
+  async function reload(){
+    if(!CONFIGURED) return;
+    try {
+      records = await apiGet();
+      render();
+    } catch(e){
+      banner(false, 'サーバーに接続できませんでした：' + e.message);
+    }
+  }
+
+  // ===== 共通ユーティリティ =====
+  function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function numval(id){ const v=$(id).value; return (v===''||isNaN(parseFloat(v)))?null:parseFloat(v); }
+
+  // ===== CURB-65 計算 =====
+  function points(){
+    const c = confusion===1?1:0;
+    const bun=numval('inBun'), rr=numval('inRr'), sbp=numval('inSbp'), dbp=numval('inDbp'), age=numval('inAge');
+    const u = bun===null?0:(bun>20?1:0);
+    const r = rr===null?0:(rr>=30?1:0);
+    const b = ((sbp!==null&&sbp<90)||(dbp!==null&&dbp<=60))?1:0;
+    const a = age===null?0:(age>=65?1:0);
+    return {c,u,r,b,a,score:c+u+r+b+a};
+  }
+  function risk(score){
+    if(score<=1) return {klass:'low', name:'低リスク（Group 1）', mort: score===0?'0.6%（0点）':'2.7%（1点）'};
+    if(score===2) return {klass:'mid', name:'中等度リスク（Group 2）', mort:'6.8%（2点）'};
+    return {klass:'high', name:'高リスク（Group 3）', mort: score===3?'14.0%（3点）':'27.8%（4〜5点）'};
+  }
+  function refresh(){
+    const p = points();
+    const setItem=(itemId,badgeId,on)=>{ $(itemId).classList.toggle('on',on===1); $(badgeId).textContent = on===1?'+1':'0'; };
+    setItem('itemC','pC',p.c); setItem('itemU','pU',p.u); setItem('itemR','pR',p.r); setItem('itemB','pB',p.b); setItem('itemAge','pA',p.a);
+    const rk = risk(p.score);
+    $('scoreNum').textContent = p.score;
+    const live=$('live'); live.classList.remove('low','mid','high'); live.classList.add(rk.klass);
+    $('riskName').textContent = rk.name; $('riskMort').textContent = rk.mort;
+  }
+  function syncToggle(){ document.querySelectorAll('#itemC .toggle-btn').forEach(b=> b.classList.toggle('active', Number(b.dataset.value)===confusion)); }
+
+  // ===== 保存（クラウドへ）=====
+  async function save(){
+    if(!CONFIGURED){ alert('先に SUPABASE_URL と SUPABASE_KEY を設定してください。'); return; }
+    const label = $('inLabel').value.trim();
+    if(!label){ alert('患者ラベルを入力してください。'); $('inLabel').focus(); return; }
+    const p = points();
+    const data = {
+      patient_label: label,
+      assessed_on: $('inDate').value || today(),
+      confusion: confusion===1?1:0,
+      bun: numval('inBun')||0, resp_rate: numval('inRr')||0,
+      sbp: numval('inSbp')||0, dbp: numval('inDbp')||0, age: numval('inAge')||0,
+      total_score: p.score, risk_class: risk(p.score).klass,
+      note: $('inNote').value.trim()
+    };
+    const btn = $('btnSave'); btn.disabled = true; const orig = btn.textContent; btn.textContent = '保存中…';
+    try {
+      if(editingId) await apiUpdate(editingId, data);
+      else await apiInsert(data);
+      endEdit();
+      await reload();
+    } catch(e){
+      alert('保存に失敗：' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = orig;
+    }
+  }
+
+  function edit(id){
+    const r = records.find(x=>String(x.id)===String(id)); if(!r) return;
+    editingId = r.id; confusion = Number(r.confusion)===1?1:0;
+    $('inLabel').value=r.patient_label||''; $('inDate').value=(r.assessed_on||'').slice(0,10);
+    $('inBun').value=r.bun??''; $('inRr').value=r.resp_rate??''; $('inSbp').value=r.sbp??''; $('inDbp').value=r.dbp??''; $('inAge').value=r.age??'';
+    $('inNote').value=r.note||'';
+    syncToggle(); refresh();
+    $('formTitle').textContent='記録を編集'; $('btnSave').textContent='更新する'; $('btnCancel').style.display='inline-block';
+    render(); window.scrollTo({top:0, behavior:'smooth'});
+  }
+  function endEdit(){
+    editingId=null; confusion=0;
+    ['inLabel','inBun','inRr','inSbp','inDbp','inAge','inNote'].forEach(id=>$(id).value='');
+    $('inDate').value=today(); syncToggle();
+    $('formTitle').textContent='新しい評価を記録'; $('btnSave').textContent='記録する'; $('btnCancel').style.display='none';
+    refresh();
+  }
+  async function remove(id){
+    const r = records.find(x=>String(x.id)===String(id));
+    if(!confirm('「'+(r?r.patient_label:'')+'」の記録を削除します。よろしいですか？')) return;
+    try {
+      await apiDelete(id);
+      if(String(editingId)===String(id)) endEdit();
+      await reload();
+    } catch(e){ alert('削除に失敗：' + e.message); }
+  }
+
+  function render(){
+    const fRisk=$('filterRisk').value, q=$('searchBox').value.trim().toLowerCase();
+    const view = records.filter(r=>{
+      if(fRisk && r.risk_class!==fRisk) return false;
+      if(q && !String(r.patient_label||'').toLowerCase().includes(q)) return false;
+      return true;
+    });
+    $('count').textContent = '全'+records.length+'件'+(view.length!==records.length?'／表示'+view.length+'件':'');
+    const listEl=$('list');
+    if(view.length===0){
+      listEl.innerHTML = '<div class="empty">'+(records.length===0?'まだ記録がありません。上のフォームから追加してください。':'条件に合う記録がありません。')+'</div>';
+      return;
+    }
+    const rn={low:'低リスク',mid:'中等度',high:'高リスク'};
+    listEl.innerHTML = view.map(r=>{
+      const rc=r.risk_class||'low', editing=(String(editingId)===String(r.id));
+      return '<div class="rec '+(editing?'editing':'')+'">'+
+        '<div class="rec-top"><div><span class="rec-name">'+esc(r.patient_label)+'</span>'+
+        '<span class="badge b-'+rc+'">'+(rn[rc]||rc)+'</span></div>'+
+        '<div class="rec-actions"><button class="edit" onclick="edit(\''+r.id+'\')">編集</button>'+
+        '<button class="danger" onclick="remove(\''+r.id+'\')">削除</button></div></div>'+
+        '<div class="rec-score">CURB-65：<b>'+esc(r.total_score)+'</b> / 5</div>'+
+        '<div class="rec-meta">評価日：'+esc((r.assessed_on||'—').slice(0,10))+
+        '　｜　C'+esc(r.confusion)+' / BUN '+esc(r.bun)+' / RR '+esc(r.resp_rate)+
+        ' / BP '+esc(r.sbp)+'/'+esc(r.dbp)+' / '+esc(r.age)+'歳</div>'+
+        (r.note?'<div class="rec-note">'+esc(r.note)+'</div>':'')+
+      '</div>';
+    }).join('');
+  }
+
+  // ===== 書き出し（R/Excel・バックアップ用）=====
+  function download(filename, text, mime){
+    const blob = new Blob([text], {type: mime}); const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }
+  function stamp(){ const d=new Date(); return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0'); }
+  function exportJson(){ if(!records.length){ alert('書き出す記録がありません。'); return; } download('curb65_'+stamp()+'.json', JSON.stringify(records,null,2), 'application/json'); }
+  function csvCell(v){ return '"' + (v==null?'':String(v)).replace(/"/g,'""') + '"'; }
+  function exportCsv(){
+    if(!records.length){ alert('書き出す記録がありません。'); return; }
+    const cols=['patient_label','assessed_on','confusion','bun','resp_rate','sbp','dbp','age','total_score','risk_class','note','id'];
+    const head=['患者ラベル','評価日','意識障害','BUN','呼吸数','収縮期','拡張期','年齢','合計スコア','リスク','対応メモ','ID'];
+    const lines=[head.map(csvCell).join(',')];
+    records.forEach(r=> lines.push(cols.map(c=>csvCell(r[c])).join(',')));
+    download('curb65_'+stamp()+'.csv', '﻿'+lines.join('\r\n'), 'text/csv');
+  }
+
+  // ===== 接続バナー =====
+  function banner(ok, msg){
+    const el = $('connBanner'); el.className = 'conn ' + (ok?'ok':'ng'); el.innerHTML = msg;
+  }
+
+  // ===== イベント =====
+  ['inBun','inRr','inSbp','inDbp','inAge'].forEach(id=>$(id).addEventListener('input', refresh));
+  $('itemC').addEventListener('click', e=>{ const t=e.target.closest('.toggle-btn'); if(!t) return; confusion=Number(t.dataset.value); syncToggle(); refresh(); });
+  $('btnSave').addEventListener('click', save);
+  $('btnCancel').addEventListener('click', endEdit);
+  $('filterRisk').addEventListener('change', render);
+  $('searchBox').addEventListener('input', render);
+  $('btnReload').addEventListener('click', reload);
+  $('btnExportJson').addEventListener('click', exportJson);
+  $('btnExportCsv').addEventListener('click', exportCsv);
+  window.edit = edit; window.remove = remove;
+
+  // ===== 起動 =====
+  $('inDate').value = today();
+  syncToggle(); refresh();
+  if(!CONFIGURED){
+    banner(false, '未接続：スクリプト冒頭の <code>SUPABASE_URL</code> と <code>SUPABASE_KEY</code> を自分のプロジェクトの値に置き換えてください（Supabase版たたき台.md 参照）。');
+    render();
+  } else {
+    banner(true, '接続先：<code>' + esc(SUPABASE_URL) + '</code> — クラウド保存で全端末共有中。');
+    reload();
+  }
+</script>
+</body>
+</html>
