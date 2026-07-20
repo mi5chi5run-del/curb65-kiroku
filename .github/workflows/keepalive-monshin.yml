@@ -1,0 +1,24 @@
+name: keepalive-monshin
+# 外来問診用Supabase(別プロジェクト)の「7日無アクセスで一時停止→90日で削除」を防ぐ番犬。
+# 毎日1回RESTにアクセス。鍵・URLは直書きせずGitHub Secretから読む（非公開設計）。
+# ※リポジトリ休眠防止の空コミットは、同リポジトリのCURB-65 keepaliveが行うのでここでは不要。
+on:
+  schedule:
+    - cron: '10 21 * * *'   # 毎日 06:10 JST（21:10 UTC）※CURB-65の06:00とずらす
+  workflow_dispatch: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supabaseにアクセスして一時停止を防ぐ
+        env:
+          SB_URL: ${{ secrets.MONSHIN_SB_URL }}
+          SB_KEY: ${{ secrets.MONSHIN_SB_KEY }}
+        run: |
+          if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then
+            echo "::error::MONSHIN_SB_URL / MONSHIN_SB_KEY が未設定です。"
+            exit 1
+          fi
+          curl -sf -o /dev/null -w "Supabase ping HTTP %{http_code}\n" \
+            "$SB_URL/rest/v1/monshin_records?select=id&limit=1" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY"
