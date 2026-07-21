@@ -98,12 +98,6 @@ jobs:
           # --- ④うさ子(🐰)名義で本文投稿 → そのスレッドにPDF添付 ---
           MSG=$(printf ':rabbit: *外来問診記録版 バックアップレポート*（%s 時点）\n\n呼吸器外来問診票（全項目版）の練習アプリ（Supabase・入力ページは非公開運用）に蓄積したダミー症例の書き出しです。\n:warning: 架空のダミーデータのみ／実患者データは含みません。\n\n*登録件数：%s件*\n\n%s\n\n%s\n\n:page_facing_up: 閲覧レポート（ダミー専用・書き込み不可・noindex）：%s\n:floppy_disk: バックアップJSON <%s|%s> をrepoに保存済み。' \
             "$DATE" "$COUNT" "$LINES" "$TABLE" "$HLINK" "$JLINK" "$BFILE")
-          POST=$(curl -s -X POST "https://slack.com/api/chat.postMessage" \
-            -H "Authorization: Bearer $BOT_TOKEN" -H "Content-Type: application/json; charset=utf-8" \
-            -d "$(jq -n --arg ch "C0BFGN8T87P" --arg u "みちる自動便" --arg t "$MSG" '{channel:$ch,username:$u,icon_url:"https://mi5chi5run-del.github.io/curb65-kiroku/usako.png",text:$t}')")
-          [ "$(echo "$POST" | jq -r .ok)" = "true" ] || { echo "::error::chat.postMessage失敗: $POST"; exit 1; }
-          TS=$(echo "$POST" | jq -r .ts)
-
           SIZE=$(stat -c%s report.pdf)
           RESP=$(curl -s -G "https://slack.com/api/files.getUploadURLExternal" -H "Authorization: Bearer $BOT_TOKEN" \
             --data-urlencode "filename=外来問診_週次レポート_${STAMP}.pdf" --data-urlencode "length=$SIZE")
@@ -112,6 +106,6 @@ jobs:
           curl -s -F filename=@report.pdf "$UURL" >/dev/null
           RESP2=$(curl -s "https://slack.com/api/files.completeUploadExternal" \
             -H "Authorization: Bearer $BOT_TOKEN" -H "Content-Type: application/json; charset=utf-8" \
-            -d "$(jq -n --arg fid "$FID" --arg ch "C0BFGN8T87P" --arg ts "$TS" '{files:[{id:$fid,title:"外来問診 週次レポート"}],channel_id:$ch,thread_ts:$ts}')")
+            -d "$(jq -n --arg fid "$FID" --arg ch "C0BFGN8T87P" --arg c "$MSG" '{files:[{id:$fid,title:"外来問診 週次レポート"}],channel_id:$ch,initial_comment:$c}')")
           [ "$(echo "$RESP2" | jq -r .ok)" = "true" ] || { echo "::error::completeUploadExternal失敗: $RESP2"; exit 1; }
-          echo "うさ子で投稿＋PDFスレッド添付 成功"
+          echo "うさ子（bot自身の顔）で文面＋PDF本体添付 成功"
