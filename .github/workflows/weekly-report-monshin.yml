@@ -100,7 +100,7 @@ jobs:
             "$DATE" "$COUNT" "$LINES" "$TABLE" "$HLINK" "$JLINK" "$BFILE")
           POST=$(curl -s -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $BOT_TOKEN" -H "Content-Type: application/json; charset=utf-8" \
-            -d "$(jq -n --arg ch "C0BFGN8T87P" --arg u "みちる自動便" --arg t "$MSG" '{channel:$ch,username:$u,icon_emoji:":rabbit:",text:$t}')")
+            -d "$(jq -n --arg ch "C0BFGN8T87P" --arg u "みちる自動便" --arg t "$MSG" '{channel:$ch,username:$u,icon_url:"https://mi5chi5run-del.github.io/curb65-kiroku/usako.png",text:$t}')")
           [ "$(echo "$POST" | jq -r .ok)" = "true" ] || { echo "::error::chat.postMessage失敗: $POST"; exit 1; }
           TS=$(echo "$POST" | jq -r .ts)
 
