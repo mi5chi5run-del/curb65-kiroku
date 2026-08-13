@@ -1,16 +1,21 @@
 name: keepalive-monshin
 # 外来問診用Supabase(別プロジェクト)の「7日無アクセスで一時停止→90日で削除」を防ぐ番犬。
-# 毎日1回RESTにアクセス。鍵・URLは直書きせずGitHub Secretから読む（非公開設計）。
+# 2026-08-14 改訂：読み取りping1発だけでは Supabase 側に「活動なし」と判定され
+#   一時停止予告メールが届いたため、①書き込み(upsert)を主手段にし ②1日2回へ増やした。
+#   書き込み先は専用テーブル keepalive（＝monshin_records は汚さない＝週次PDFに混ざらない）。
+#   keepalive テーブルが未作成の間は、従来どおり読み取りpingへフォールバックする。
+# 鍵・URLは直書きせずGitHub Secretから読む（非公開設計）。
 # ※リポジトリ休眠防止の空コミットは、同リポジトリのCURB-65 keepaliveが行うのでここでは不要。
 on:
   schedule:
     - cron: '10 21 * * *'   # 毎日 06:10 JST（21:10 UTC）※CURB-65の06:00とずらす
+    - cron: '10 9 * * *'    # 毎日 18:10 JST（09:10 UTC）
   workflow_dispatch: {}
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Supabaseにアクセスして一時停止を防ぐ
+      - name: Supabaseに書き込んで一時停止を防ぐ
         env:
           SB_URL: ${{ secrets.MONSHIN_SB_URL }}
           SB_KEY: ${{ secrets.MONSHIN_SB_KEY }}
@@ -19,6 +24,35 @@ jobs:
             echo "::error::MONSHIN_SB_URL / MONSHIN_SB_KEY が未設定です。"
             exit 1
           fi
-          curl -sf -o /dev/null -w "Supabase ping HTTP %{http_code}\n" \
+          NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          # ① 主手段：keepalive テーブルへ upsert（書き込み＝確実にDB活動として計上される）
+          WCODE=$(curl -s -o /tmp/keepalive_write.txt -w '%{http_code}' \
+            -X POST "$SB_URL/rest/v1/keepalive?on_conflict=id" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates" \
+            -d "{\"id\":1,\"last_ping\":\"$NOW\",\"source\":\"github-actions\"}")
+          echo "write ping HTTP $WCODE"
+
+          if [ "$WCODE" -ge 200 ] && [ "$WCODE" -lt 300 ]; then
+            echo "書き込みpingに成功しました（$NOW）。"
+            exit 0
+          fi
+
+          echo "::warning::書き込みpingに失敗（HTTP $WCODE）。keepaliveテーブル未作成、またはRLSポリシー未設定の可能性があります。"
+          cat /tmp/keepalive_write.txt || true
+
+          # ② フォールバック：従来どおりの読み取りping（最低限プロジェクトには触る）
+          RCODE=$(curl -s -o /dev/null -w '%{http_code}' \
             "$SB_URL/rest/v1/monshin_records?select=id&limit=1" \
-            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY"
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY")
+          echo "read ping HTTP $RCODE"
+
+          if [ "$RCODE" -ge 200 ] && [ "$RCODE" -lt 300 ]; then
+            echo "読み取りpingは成功しました。keepaliveテーブルを作れば自動で書き込み型に切り替わります。"
+            exit 0
+          fi
+
+          echo "::error::読み取りpingも失敗しました（HTTP $RCODE）。Supabaseプロジェクトの状態を確認してください。"
+          exit 1
