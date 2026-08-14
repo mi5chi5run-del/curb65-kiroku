@@ -55,7 +55,7 @@ jobs:
 
           echo "::error::読み取りpingも失敗しました（HTTP $RCODE）。Supabaseプロジェクトの状態を確認してください。"
           exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: リポジトリの休眠を防ぐ（前回コミットから50日超なら空コミット）
         run: |
           last=$(git log -1 --format=%ct)
